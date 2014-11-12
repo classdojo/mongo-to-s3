@@ -1,0 +1,21 @@
+{
+  "name": "mongo-to-s3",
+  "version": "0.0.0",
+  "description": "Transfer mongo collections to s3",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Christopher Olivares",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "2.0.25",
+    "debug": "2.1.0",
+    "lodash": "2.4.1",
+    "slide": "1.1.6"
+  },
+  "devDependencies": {
+    "mocha": "2.0.1",
+    "expect.js": "0.2.0"
+  }
+}
