@@ -2,15 +2,19 @@
  * Simple implementation of a write stream
  * to aws using multipart upload.
 */
-var multiDebug = require("debug")("multi");
-var Writable   = require("stream").Writable;
-var inherits   = require("util").inherits;
-var chain      = require("slide").chain;
-var _          = require("lodash");
+var Writable       = require("stream").Writable;
+var inherits       = require("util").inherits;
+var chain          = require("slide").chain;
+var _              = require("lodash");
+var EventEmitter   = require("events").EventEmitter;
 
+
+var uploaderDebug  = require("debug")("uploader");
+var uploadDebug    = require("debug")("upload");
+var multiDebug     = require("debug")("multi");
 
 var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880
-
+var PARALLEL_UPLOADS = 5;
 
 // function MultipartWriteS3(s3Client) {
 //   this.__s3Client = s3Client;
@@ -61,6 +65,9 @@ function MultipartWriteS3Upload(s3Client, chunkUploadSize) {
   this.__chunks = [];
   this.__uploadedParts = [];
   this.__queuedUploadSize = 0;
+  this.__uploadsInProgress = 0;
+  this.waitingUploads = [];
+  this.__uploader = new Uploader(this.waitingUploads);
   this.__chunkUploadSize = chunkUploadSize < MINIMUM_CHUNK_UPLOAD_SIZE ?
                                 MINIMUM_CHUNK_UPLOAD_SIZE : chunkUploadSize;
 
@@ -76,6 +83,9 @@ MultipartWriteS3Upload.create = function(s3Client, chunkUploadSize, multipartCre
     }
     myS3Upload.__s3MultipartUploadConfig = s3MultipartUploadConfig;
     MultipartWriteS3Upload._addFinishHandler(myS3Upload);
+
+    //find better place for uploader start
+    myS3Upload.__uploader.start();
     cb(null, myS3Upload);
   });
 };
@@ -98,15 +108,20 @@ MultipartWriteS3Upload._addFinishHandler = function(multipartWriteS3Upload) {
 */
 
 MultipartWriteS3Upload.prototype._write = function(chunk, enc, cb) {
+  var me = this;
   if(this._shouldUploadChunks(chunk)) {
-    var chunks = this.__chunks;
-    this.__chunks = [];
-    this._uploadChunks(this.__uploadCounter++, chunks, cb);
-  } else {
-    cb();
+    this._queueChunksForUpload();
   }
+  cb();
 };
 
+
+MultipartWriteS3Upload.prototype._queueChunksForUpload = function(cb) {
+  var chunks = this.__chunks;
+  this.__chunks = [];
+  this.waitingUploads.push(this._uploadChunks.bind(this, this.__uploadCounter++, chunks));
+  cb && cb();
+};
 
 /* Set optional upload params that will override the defaults */
 MultipartWriteS3Upload.prototype.setUploadParams = function(uploadParams) {
@@ -114,15 +129,14 @@ MultipartWriteS3Upload.prototype.setUploadParams = function(uploadParams) {
 };
 
 MultipartWriteS3Upload.prototype.finishUpload = function(cb) {
-  multiDebug("Finishing upload");
   chain([
-    !_.isEmpty(this.__chunks) && [this._uploadChunks.bind(this), this.__uploadCounter, this.__chunks], //upload last chunk
+    !_.isEmpty(this.__chunks) && [this._queueChunksForUpload.bind(this)],
     [this._completeMultipartUpload.bind(this)]
   ], cb);
 };
 
 MultipartWriteS3Upload.prototype._completeMultipartUpload = function(cb) {
-  //finish uploading remaining chunks
+  var me = this;
   var completeConfig = {
     UploadId         : this.__s3MultipartUploadConfig.UploadId,
     Bucket           : this.__s3MultipartUploadConfig.Bucket,
@@ -131,8 +145,12 @@ MultipartWriteS3Upload.prototype._completeMultipartUpload = function(cb) {
       Parts: this.__uploadedParts
     }
   };
-  multiDebug("_completeMultipartUpload");
-  this.__s3Client.completeMultipartUpload(completeConfig, cb);
+  multiDebug("Waiting for uploader to finish");
+  this.__uploader.once("empty", function() {
+    multiDebug("Completing upload transfer");
+    me.__uploader.stop();
+    me.__s3Client.completeMultipartUpload(completeConfig, cb);
+  });
 };
 
 /*
@@ -187,5 +205,72 @@ MultipartWriteS3Upload.prototype._shouldUploadChunks = function(chunk) {
   return false;
 };
 
+inherits(Uploader, EventEmitter);
+function Uploader(waitingUploads) {
+  this.__waitingUploads = waitingUploads;
+  this.__outstandingUploads = [];
+  this.__failedUploads = [];
+};
+
+Uploader.prototype.start = function() {
+  uploaderDebug("Starting");
+  this.__i = setInterval(this.serviceUploads.bind(this), 1000);
+};
+
+Uploader.prototype.stop = function() {
+  uploaderDebug("Stopping");
+  clearInterval(this.__i);
+};
+
+Uploader.prototype.serviceUploads = function() {
+  var upload;
+  //cleanup outstandingUploads array
+  this._cleanupOutstandingJobs();
+  while(this.__outstandingUploads.length < PARALLEL_UPLOADS && !_.isEmpty(this.__waitingUploads)) {
+    uploaderDebug("Initiating upload");
+    upload = new UploadJob(this.__waitingUploads.shift());
+    upload.start();
+    this.__outstandingUploads.push(upload);
+  }
+  if(_.isEmpty(this.__waitingUploads) && _.isEmpty(this.__outstandingUploads)) {
+    uploaderDebug("Empty");
+    this.emit("empty");
+  }
+};
+
+Uploader.prototype._cleanupOutstandingJobs = function() {
+  var upload, i;
+  for(i in this.__outstandingUploads) {
+    upload = this.__outstandingUploads[i];
+    if(/failed|success/.test(upload.status)) {
+      if(upload.status === "failed") {
+        this.__failedUploads.push(upload);
+      }
+      this.__outstandingUploads[i] = null;
+    }
+  }
+  this.__outstandingUploads = _.compact(this.__outstandingUploads);
+};
+
+function UploadJob(partial) {
+  this.__partial = partial;
+  this.status = "waiting";
+}
+
+UploadJob.prototype.start = function() {
+  var me = this;
+  this.status = "inProgress";
+  uploadDebug("Start");
+  this.__partial(function(err, result) {
+    if(err) {
+      me.status = "failed";
+      me.error = err;
+    } else {
+      me.status = "success";
+      me.result = result;
+    }
+    uploadDebug("Result " + me.status);
+  });
+};
 
 module.exports = MultipartWriteS3Upload;
