@@ -60,6 +60,7 @@ function MultipartWriteS3Upload(s3Client, chunkUploadSize) {
   this.__uploadCounter = 1;
   this.__chunks = [];
   this.__uploadedParts = [];
+  this.__queuedUploadSize = 0;
   this.__chunkUploadSize = chunkUploadSize < MINIMUM_CHUNK_UPLOAD_SIZE ?
                                 MINIMUM_CHUNK_UPLOAD_SIZE : chunkUploadSize;
 
@@ -173,17 +174,15 @@ MultipartWriteS3Upload.prototype._uploadChunks = function(partNumber, chunks, cb
 
 
 MultipartWriteS3Upload.prototype._shouldUploadChunks = function(chunk) {
-  var chunkLengths = 0;
   this.__chunks.push(chunk);
   if(!chunk.length) {
     return true;
   }
-  //naive
-  for(var i = 0; i < this.__chunks.length; i++) {
-    chunkLengths = chunkLengths + _.size(this.__chunks[i]);
-    if(chunkLengths > this.__chunkUploadSize) {
-      return true
-    }
+
+  this.__queuedUploadSize = this.__queuedUploadSize + _.size(chunk);
+  if(this.__queuedUploadSize > this.__chunkUploadSize) {
+    this.__queuedUploadSize = 0;
+    return true;
   }
   return false;
 };
