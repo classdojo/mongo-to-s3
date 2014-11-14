@@ -7,8 +7,9 @@ var fs            = require("fs");
 var inherits      = require("util").inherits;
 var S3Multipart   = require("./s3-multipart");
 var EventEmitter  = require("events").EventEmitter;
-
-
+var Exports       = require("./export");
+var async         = require("async");
+var __            = require("highland");
 //debuggers
 var mongoDebug    = require("debug")("mongo");
 var s3Debug       = require("debug")("s3");
@@ -20,7 +21,6 @@ function MongoToS3Upload(s3Client, workingFile) {
   this.__s3Client  = s3Client;
   this.__workingFile = workingFile;
 };
-
 
 /*
  * @param options
@@ -60,31 +60,31 @@ MongoToS3Upload.prototype.createS3Sink = function(options, cb) {
   S3Multipart.create(this.__s3Client, options.chunkUploadSize, options.s3, cb);
 };
 
-MongoToS3Upload.prototype.fromMongo = function(options) {
+MongoToS3Upload.prototype.fromMongo = function(options, cb) {
+  var me = this;
+  if(!_.isArray(options)) {
+    options = [options];
+  }
   this.__collectionOptions = options;
-  var mongoExport = this._spawnMongoExport();
-  var streamableMongoExport = new Readable().wrap(mongoExport.stdout);
 
-
-  //does stdout emit end?
-  mongoExport.on("close", function(code) {
-    //
-    if(!code) {
-      //success
-      streamableMongoExport.emit("end");
-    } else {
-      //failure
-      streamableMongoExport.emit("error", new Error("mongoexport failed"));
+  async.map(this.__collectionOptions, Exports.createExportJob.bind(Exports), function(err, streams) {
+    if(err) {
+      return cb(err);
     }
+    me.__mongoSources = streams;
+    cb();
   });
-
-  /*
-   *  TODO: attach an error listener to mongoexport stdout that transforms output
-   *        to an emitted error.
-   */
-
-  return streamableMongoExport;
 };
+
+
+var start;
+MongoToS3Upload.prototype.resume = start = function() {
+  //call resume on all export jobs and wrap in highland stream
+  var streams = this.__mongoSources.map(function(exportJob) { return exportJob.resume();})
+  return __(streams).merge();
+};
+
+MongoToS3Upload.prototype.start = start;
 
 MongoToS3Upload.prototype._spawnMongoExport = function(cb) {
   //construct the mongoexport string!
