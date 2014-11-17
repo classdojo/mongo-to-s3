@@ -5,12 +5,14 @@ var fs           = require("fs");
 var Readable     = require("stream").Readable;
 var uuid         = require("node-uuid");
 var exportsDebug = require("debug")("exports");
+var exportDebug  = require("debug")("export");
 var inherits     = require("util").inherits;
 var EventEmitter = require("events").EventEmitter;
 var Transform    = require("stream").Transform;
 var Tail         = require("./tail");
 var _            = require("lodash");
 var __           = require("highland");
+var Parser       = require("./parser");
 
 
 /* Simple collection operations on MongoExport*/
@@ -21,13 +23,9 @@ function MongoExports(mongoExports) {
   for(var i in this.__mongoExports) {
     this.__mongoExports[i].on("close", this._closeListener.bind(this));
   };
-  this.streams = __(this.__mongoExports.map(function(m) { return m.stream; }))
-                    .merge();
-  var t = new Transform();
-  t._transform = function(a,b,c) {
-    c();
-  };
-  // this.streams.pipe(t);
+  this.streams = __(this.__mongoExports.map(function(m) {
+    return m.stream;
+  })).merge();
 }
 
 MongoExports.prototype._closeListener = function(mongoExport) {
@@ -94,7 +92,10 @@ MongoExport.prototype.init = function(cb) {
     if(err) {
       return cb(err);
     }
-    me.stream = Tail(workingFilePath);
+    me.__tail = Tail(workingFilePath);
+    // TODO: Allow client to define parser
+    me.__parser = Parser();
+    me.stream = me.__tail.pipe(me.__parser);
     me._spawnMongoExport();
     me.pause();
     cb();
@@ -113,16 +114,19 @@ MongoExport.prototype._createWorkingFile = function(cb) {
   });
 };
 
-
-
 MongoExport.prototype._spawnMongoExport = function() {
   var me = this;
   var options = this.__config.exportOptions + " -o " + this.__workingFile;
   this.__spawn = childProcess.spawn("mongoexport", options.split(" "));
   this.__spawn.on("close", function(exitCode) {
     me.exitCode = exitCode;
-    me.status = "closed";
-    me.emit("close", me);
+    //let's wait for tail to reach eof before saying this job is closed!
+    me.__tail.once("eof", function() {
+      me.status = "closed";
+      me.emit("close", me);
+    });
+    // me.status = "closed";
+    exportDebug("Job " + me.__id + " finished");
   });
   return this.__spawn;
 };
@@ -136,7 +140,6 @@ MongoExport.prototype.resume = function() {
   this.__spawn.kill("SIGCONT");
   this.status = "running";
 };
-
 
 exports.MongoExports = MongoExports;
 exports.MongoExport = MongoExport;
