@@ -9,6 +9,7 @@
   "author": "Christopher Olivares <chris@classdojo.com>",
   "license": "ISC",
   "dependencies": {
+    "always-tail": "0.1.1",
     "async": "0.9.0",
     "aws-sdk": "2.0.25",
     "debug": "2.1.0",

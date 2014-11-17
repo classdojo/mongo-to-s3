@@ -4,17 +4,79 @@ var chain        = require("slide").chain;
 var fs           = require("fs");
 var Readable     = require("stream").Readable;
 var uuid         = require("node-uuid");
+var exportsDebug = require("debug")("exports");
+var inherits     = require("util").inherits;
+var EventEmitter = require("events").EventEmitter;
+var Transform    = require("stream").Transform;
+var Tail         = require("./tail");
+var _            = require("lodash");
+var __           = require("highland");
 
 
-function Exports(config) {
-  this.__config = config;
-  this.__id     = uuid.v1();
+/* Simple collection operations on MongoExport*/
+inherits(MongoExports, Readable);
+function MongoExports(mongoExports) {
+  Readable.call(this);
+  this.__mongoExports = mongoExports;
+  for(var i in this.__mongoExports) {
+    this.__mongoExports[i].on("close", this._closeListener.bind(this));
+  };
+  this.streams = __(this.__mongoExports.map(function(m) { return m.stream; }))
+                    .merge();
+  var t = new Transform();
+  t._transform = function(a,b,c) {
+    c();
+  };
+  // this.streams.pipe(t);
+}
+
+MongoExports.prototype._closeListener = function(mongoExport) {
+  exportsDebug("MongoExport finished with code " + mongoExport.exitCode);
+  var mongoexport;
+  for(var i in this.__mongoExports) {
+    mongoexport = this.__mongoExports[i];
+    if(mongoexport.status !== "closed") {
+      return;
+    }
+  }
+  this.emit("end");
+};
+
+MongoExports.prototype.resume = function() {
+  //resume each export and merge
+  var exportStreams, combinedStreams;
+  exportStreams = this.__mongoExports.map(function(exports) {
+    return exports.resume();
+  })
+  return this;
+};
+
+MongoExports.prototype.pause = function() {
+  this.__mongoExports.forEach(function(mongoExport) {
+    mongoExport.pause();
+  });
+};
+
+MongoExports.create = function(configs, cb) {
+  async.map(configs, MongoExport.create.bind(MongoExport), function(err, mongoExportArr) {
+    if(err) {
+      return cb(err);
+    }
+    cb(null, new MongoExports(mongoExportArr));
+  });
+};
+
+inherits(MongoExport, EventEmitter);
+function MongoExport(config) {
+  this.__config  = config;
+  this.__id      = uuid.v1();
+  this.status    = "uninitialized";
 };
 
 /* 
  * takes {exportOptions: "", workingDirectory: ""}
 */
-Exports.createExportJob = function(config, cb) {
+MongoExport.create = function(config, cb) {
 
   var exportJob = new this(config);
   exportJob.init(function(err) {
@@ -26,53 +88,55 @@ Exports.createExportJob = function(config, cb) {
 };
 
 
-Exports.prototype.init = function(cb) {
+MongoExport.prototype.init = function(cb) {
   var me = this;
-  //do we have a working directory? If not use in memory
-  chain([
-    this.__config.workingDirectory && [this.__createTempFile.bind(this)],
-    [this.__spawnProcess.bind(this)]
-  ], cb);
+  this._createWorkingFile(function(err, workingFilePath) {
+    if(err) {
+      return cb(err);
+    }
+    me.stream = Tail(workingFilePath);
+    me._spawnMongoExport();
+    me.pause();
+    cb();
+  });
+};
+
+MongoExport.prototype._createWorkingFile = function(cb) {
+  var me = this;
+  this.__workingFile = this.__config.workingDirectory + "/mongoexport-" + this.__id;
+  fs.open(this.__workingFile, "w+", function(err, fd) {
+    if(err) {
+      return cb(err);
+    }
+    me.__fd = fd;
+    cb(null, me.__workingFile)
+  });
 };
 
 
-Exports.prototype.__spawnProcess = function(cb) {
-  var spawn;
-  var spawnOpts = {
-    stdio: ['ignore', null, 2]
-  };
-  if(this.__fd) {
-    spawnOpts.stdio = ['ignore', this.__fd, 2];
-  }
-  this.__spawn = childProcess.spawn("mongoexport", this.__config.exportOptions.split(" "), spawnOpts);
-  this.pause();
-  if(this.__fd) {
-    stream = fs.createReadStream(this.__tempFile);
-  } else {
-    stream = new Readable().wrap(this.__spawn.stdout);
-  }
-  this.__stream = stream;
-  //TODO: figure out proper error interface with file readstream and process stdout wrap
-  cb();
+
+MongoExport.prototype._spawnMongoExport = function() {
+  var me = this;
+  var options = this.__config.exportOptions + " -o " + this.__workingFile;
+  this.__spawn = childProcess.spawn("mongoexport", options.split(" "));
+  this.__spawn.on("close", function(exitCode) {
+    me.exitCode = exitCode;
+    me.status = "closed";
+    me.emit("close", me);
+  });
+  return this.__spawn;
 };
 
-Exports.prototype.__createTempFile = function(cb) {
-  this.__workingFile = this.workingDirectory + "/mongoexport_worker_" + this.__id;
-  fs.open(this.__workingFile, "w+", cb);
-};
-
-Exports.prototype.pause = function() {
+MongoExport.prototype.pause = function() {
   this.__spawn.kill("SIGSTOP");
-  //remove all stream handlers on process
-  this.__spawn.removeAllListeners("data");
-  this.__spawn.removeAllListeners("error");
-  this.__stream = null;
+  this.status = "paused";
 };
 
-Exports.prototype.resume = function() {
+MongoExport.prototype.resume = function() {
   this.__spawn.kill("SIGCONT");
-  this.__stream = new Readable().wrap(this.__spawn.stdout);
-  return this.__stream;
+  this.status = "running";
 };
 
-module.exports = Exports;
+
+exports.MongoExports = MongoExports;
+exports.MongoExport = MongoExport;

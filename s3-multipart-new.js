@@ -273,4 +273,8 @@ UploadJob.prototype.start = function() {
   });
 };
 
+UploadJob.prototype.serialize = function() {
+  if(this.status == "failed") {}
+}
+
 module.exports = MultipartWriteS3Upload;

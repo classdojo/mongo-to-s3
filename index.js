@@ -7,13 +7,16 @@ var fs            = require("fs");
 var inherits      = require("util").inherits;
 var S3Multipart   = require("./s3-multipart");
 var EventEmitter  = require("events").EventEmitter;
-var Exports       = require("./export");
+var MongoExports  = require("./export").MongoExports;
 var async         = require("async");
 var __            = require("highland");
 //debuggers
 var mongoDebug    = require("debug")("mongo");
 var s3Debug       = require("debug")("s3");
 var systemDebug   = require("debug")("system");
+
+
+var Tail          = require("./tail");
 
 
 inherits(MongoToS3Upload, EventEmitter);
@@ -67,36 +70,26 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
   }
   this.__collectionOptions = options;
 
-  async.map(this.__collectionOptions, Exports.createExportJob.bind(Exports), function(err, streams) {
+  MongoExports.create(options, function(err, mongoExports) {
     if(err) {
       return cb(err);
     }
-    me.__mongoSources = streams;
-    cb();
+    me.__mongoExports = mongoExports;
+    cb(null, mongoExports);
   });
 };
 
-
-var start;
-MongoToS3Upload.prototype.resume = start = function() {
-  //call resume on all export jobs and wrap in highland stream
-  var streams = this.__mongoSources.map(function(exportJob) { return exportJob.resume();})
-  return __(streams).merge();
-};
-
-MongoToS3Upload.prototype.start = start;
-
-MongoToS3Upload.prototype._spawnMongoExport = function(cb) {
-  //construct the mongoexport string!
-  var mongoExportOptions = this.__collectionOptions.exportOptions;
-  /*
-   * We need to remove the -o command if one is specified and then define our
-   * own in the mongoExportCmd string.
-  */
-  mongoExportCmd = ensureNoOutputInString(mongoExportOptions);
-  mongoDebug("Spawning mongoexport command: " + mongoExportOptions);
-  return childProcess.spawn("mongoexport", mongoExportOptions.split(" "));
-};
+// MongoToS3Upload.prototype._spawnMongoExport = function(cb) {
+//   //construct the mongoexport string!
+//   var mongoExportOptions = this.__collectionOptions.exportOptions;
+  
+//    * We need to remove the -o command if one is specified and then define our
+//    * own in the mongoExportCmd string.
+  
+//   mongoExportCmd = ensureNoOutputInString(mongoExportOptions);
+//   mongoDebug("Spawning mongoexport command: " + mongoExportOptions);
+//   return childProcess.spawn("mongoexport", mongoExportOptions.split(" "));
+// };
 
 //helpers
 var waitUntil = function(condition, cb) {
