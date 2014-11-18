@@ -6,23 +6,27 @@ var _             = require("lodash");
 var fs            = require("fs");
 var inherits      = require("util").inherits;
 var S3Multipart   = require("./s3-multipart");
-var EventEmitter  = require("events").EventEmitter;
 var MongoExports  = require("./export").MongoExports;
 var async         = require("async");
 var __            = require("highland");
+var uuid          = require("node-uuid");
+var Tail          = require("./tail");
+var EventEmitter  = require("events").EventEmitter;
+var Parser        = require("./parser");
+
+
 //debuggers
 var mongoDebug    = require("debug")("mongo");
 var s3Debug       = require("debug")("s3");
 var systemDebug   = require("debug")("system");
-
-
-var Tail          = require("./tail");
-
+var workerDebug   = require("debug")("worker");
 
 inherits(MongoToS3Upload, EventEmitter);
 function MongoToS3Upload(s3Client, workingFile) {
+  Readable.call(this);
   this.__s3Client  = s3Client;
   this.__workingFile = workingFile;
+  this.__id = uuid.v1();
 };
 
 /*
@@ -69,7 +73,54 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
     options = [options];
   }
   this.__collectionOptions = options;
+  if(!cb) {
+    this._createMongoExports(options, function(err, mongoExports) {
+      //create join workers
+      if(err) {
+        return me.emit("error", err);
+      }
+      me._createWorkerProcesses();
+    });
+    return this._prepareForWorkerMode();
+  } else {
+    me._createMongoExports(options, cb);
+  }
+};
 
+//returns a stream that represents
+MongoToS3Upload.prototype.throughPipeline  = function(filePath) {
+  //let's fork a worker processor for every copy of mongoExport
+  this.__pipelineFilePath = filePath
+  return this.__joinTail.pipe(Parser());
+};
+
+MongoToS3Upload.prototype._createWorkerProcesses = function() {
+  //create a worker process per
+  workerDebug("Creating worker...", this.__mongoExports.exports.length);
+  this.__workers = [];
+  for(var i = 0; i < this.__mongoExports.exports.length; i++) {
+    this.__workers.push(childProcess.fork(__dirname + "/worker.js"));
+    this.__workers[i].send({
+      from: this.__mongoExports.exports[i].workingFile,
+      through: this.__pipelineFilePath,
+      to: this.__joinFile
+    });
+  }
+};
+
+MongoToS3Upload.prototype._prepareForWorkerMode = function() {
+  this.__workerMode = true;
+  workerDebug("Preaparing for worker mode");
+  //Let's pop off the working directory from the first mongoexport job
+  var workingDirectory = this.__collectionOptions[0].workingDirectory;
+  this.__joinFile = workingDirectory + "/mongo-to-s3-join-" + this.__id;
+  this.__joinfd = fs.openSync(this.__joinFile, "w+");
+  this.__joinTail = Tail(this.__joinFile);
+  return this;
+};
+
+MongoToS3Upload.prototype._createMongoExports = function(options, cb) {
+  var me = this;
   MongoExports.create(options, function(err, mongoExports) {
     if(err) {
       return cb(err);

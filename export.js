@@ -19,11 +19,11 @@ var Parser       = require("./parser");
 inherits(MongoExports, Readable);
 function MongoExports(mongoExports) {
   Readable.call(this);
-  this.__mongoExports = mongoExports;
-  for(var i in this.__mongoExports) {
-    this.__mongoExports[i].on("close", this._closeListener.bind(this));
+  this.exports = mongoExports;
+  for(var i in this.exports) {
+    this.exports[i].on("close", this._closeListener.bind(this));
   };
-  this.streams = __(this.__mongoExports.map(function(m) {
+  this.streams = __(this.exports.map(function(m) {
     return m.stream;
   })).merge();
 }
@@ -31,8 +31,8 @@ function MongoExports(mongoExports) {
 MongoExports.prototype._closeListener = function(mongoExport) {
   exportsDebug("MongoExport finished with code " + mongoExport.exitCode);
   var mongoexport;
-  for(var i in this.__mongoExports) {
-    mongoexport = this.__mongoExports[i];
+  for(var i in this.exports) {
+    mongoexport = this.exports[i];
     if(mongoexport.status !== "closed") {
       return;
     }
@@ -43,14 +43,14 @@ MongoExports.prototype._closeListener = function(mongoExport) {
 MongoExports.prototype.resume = function() {
   //resume each export and merge
   var exportStreams, combinedStreams;
-  exportStreams = this.__mongoExports.map(function(exports) {
+  exportStreams = this.exports.map(function(exports) {
     return exports.resume();
   })
   return this;
 };
 
 MongoExports.prototype.pause = function() {
-  this.__mongoExports.forEach(function(mongoExport) {
+  this.exports.forEach(function(mongoExport) {
     mongoExport.pause();
   });
 };
@@ -104,19 +104,19 @@ MongoExport.prototype.init = function(cb) {
 
 MongoExport.prototype._createWorkingFile = function(cb) {
   var me = this;
-  this.__workingFile = this.__config.workingDirectory + "/mongoexport-" + this.__id;
-  fs.open(this.__workingFile, "w+", function(err, fd) {
+  this.workingFile = this.__config.workingDirectory + "/mongoexport-" + this.__id;
+  fs.open(this.workingFile, "w+", function(err, fd) {
     if(err) {
       return cb(err);
     }
     me.__fd = fd;
-    cb(null, me.__workingFile)
+    cb(null, me.workingFile)
   });
 };
 
 MongoExport.prototype._spawnMongoExport = function() {
   var me = this;
-  var options = this.__config.exportOptions + " -o " + this.__workingFile;
+  var options = this.__config.exportOptions + " -o " + this.workingFile;
   this.__spawn = childProcess.spawn("mongoexport", options.split(" "));
   this.__spawn.on("close", function(exitCode) {
     me.exitCode = exitCode;

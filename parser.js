@@ -1,4 +1,3 @@
-var Parse       = require("jsonparse");
 var Transform   = require("stream").Transform;
 var _           = require("lodash");
 var JSONStream  = require("JSONStream");
@@ -9,6 +8,7 @@ module.exports = function(opts) {
   var parser = JSONStream.parse();
   var stream = new Duplex();
   stream._write = function(chunk, enc, next) {
+    console.log("--", chunk.toString());
     parser.write(chunk);
     next();
   };
