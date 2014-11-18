@@ -7,11 +7,10 @@
 //   return new Readable().wrap(tail);
 // };
 
-
-
-//another tail
-var Tail = require("tail-stream");
+var ChildProcess = require("child_process");
+var Readable     = require("stream").Readable;
 
 module.exports = function(file) {
-  return Tail.createReadStream(file);
+  var childProcess = ChildProcess.spawn("tail", ["-f", file]);
+  return new Readable().wrap(childProcess.stdout);
 };

@@ -74,6 +74,7 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
   }
   this.__collectionOptions = options;
   if(!cb) {
+    this._prepareForWorkerMode();
     this._createMongoExports(options, function(err, mongoExports) {
       //create join workers
       if(err) {
@@ -81,7 +82,7 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
       }
       me._createWorkerProcesses();
     });
-    return this._prepareForWorkerMode();
+    return this;
   } else {
     me._createMongoExports(options, cb);
   }

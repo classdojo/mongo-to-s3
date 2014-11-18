@@ -13,6 +13,7 @@ var Tail         = require("./tail");
 var _            = require("lodash");
 var __           = require("highland");
 var Parser       = require("./parser");
+var JSONStream   = require("JSONStream");
 
 
 /* Simple collection operations on MongoExport*/
@@ -94,7 +95,12 @@ MongoExport.prototype.init = function(cb) {
     }
     me.__tail = Tail(workingFilePath);
     // TODO: Allow client to define parser
-    me.__parser = Parser();
+    me.__parser = JSONStream.parse();
+    // var t = new Transform();
+    // t._transform = function(c,d,e) {
+    //   this.push(c);
+    //   e();
+    // }
     me.stream = me.__tail.pipe(me.__parser);
     me._spawnMongoExport();
     me.pause();
