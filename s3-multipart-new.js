@@ -13,7 +13,7 @@ var uploaderDebug  = require("debug")("uploader");
 var uploadDebug    = require("debug")("upload");
 var multiDebug     = require("debug")("multi");
 
-var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880
+var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880;
 var PARALLEL_UPLOADS = 5;
 
 // function MultipartWriteS3(s3Client) {
@@ -100,7 +100,7 @@ MultipartWriteS3Upload._addFinishHandler = function(multipartWriteS3Upload) {
       multipartWriteS3Upload.emit("done");
     });
   });
-}
+};
 
 
 /* Initial naive implementation of writing each chunk serially to s3.
@@ -120,7 +120,9 @@ MultipartWriteS3Upload.prototype._queueChunksForUpload = function(cb) {
   var chunks = this.__chunks;
   this.__chunks = [];
   this.waitingUploads.push(this._uploadChunks.bind(this, this.__uploadCounter++, chunks));
-  cb && cb();
+  if (cb){
+    cb();
+  }
 };
 
 /* Set optional upload params that will override the defaults */
@@ -210,7 +212,7 @@ function Uploader(waitingUploads) {
   this.__waitingUploads = waitingUploads;
   this.__outstandingUploads = [];
   this.__failedUploads = [];
-};
+}
 
 Uploader.prototype.start = function() {
   uploaderDebug("Starting");
@@ -275,6 +277,6 @@ UploadJob.prototype.start = function() {
 
 UploadJob.prototype.serialize = function() {
   if(this.status == "failed") {}
-}
+};
 
 module.exports = MultipartWriteS3Upload;

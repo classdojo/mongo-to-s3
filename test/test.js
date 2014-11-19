@@ -1,4 +1,6 @@
 var expect          = require("expect.js");
+var worker = require('../worker');
+
 
 
 describe("MongoToS3Upload", function() {
@@ -11,7 +13,7 @@ describe("MongoToS3Upload", function() {
 
   });
 
-  describe("_spawnMongoExport" function() {
+  describe("_spawnMongoExport", function() {
 
   });
 });

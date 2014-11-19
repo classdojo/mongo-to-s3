@@ -1,5 +1,6 @@
 ## mongo-to-s3 (WIP)
 [![Build Status](https://travis-ci.org/classdojo/mongo-to-s3.svg?branch=master)](https://travis-ci.org/classdojo/mongo-to-s3)
+[![codecov.io](https://codecov.io/github/classdojo/mongo-to-s3/coverage.svg?branch=master)](https://codecov.io/github/classdojo/mongo-to-s3?branch=master)
 [![NPM version](https://badge.fury.io/js/mongo-to-s3.png)](http://badge.fury.io/js/mongo-to-s3)
 
 ```javascript

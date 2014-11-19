@@ -2,7 +2,7 @@ var fs = require("fs");
 var Tail        = require("./tail");
 var JSONStream  = require("JSONStream");
 var async       = require("async");
-var ChildProcess = require("child_process")
+var ChildProcess = require("child_process");
 var Readable = require("stream").Readable;
 
 var initialized = false;

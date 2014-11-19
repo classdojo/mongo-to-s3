@@ -26,7 +26,7 @@ function MongoToS3Upload(s3Client, workingFile) {
   this.__s3Client  = s3Client;
   this.__workingFile = workingFile;
   this.__id = uuid.v1();
-};
+}
 
 /*
  * @param options
@@ -90,7 +90,7 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
 //returns a stream that represents
 MongoToS3Upload.prototype.throughPipeline  = function(filePath) {
   //let's fork a worker processor for every copy of mongoExport
-  this.__pipelineFilePath = filePath
+  this.__pipelineFilePath = filePath;
   return this.__joinTail.pipe(JSONStream.parse());
 };
 
@@ -131,7 +131,7 @@ MongoToS3Upload.prototype._waitForMongoExportsInit = function(cb) {
     return me.__mongoExports;
   }, setTimeout.bind(null, function(cb) {cb();}, 100),
   cb);
-}
+};
 
 MongoToS3Upload.prototype._prepareForWorkerMode = function() {
   this.__workerMode = true;

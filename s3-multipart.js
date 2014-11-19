@@ -9,7 +9,7 @@ var chain      = require("slide").chain;
 var _          = require("lodash");
 
 
-var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880
+var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880;
 
 
 // function MultipartWriteS3(s3Client) {
@@ -90,7 +90,7 @@ MultipartWriteS3Upload._addFinishHandler = function(multipartWriteS3Upload) {
       multipartWriteS3Upload.emit("done");
     });
   });
-}
+};
 
 
 /* Initial naive implementation of writing each chunk serially to s3.

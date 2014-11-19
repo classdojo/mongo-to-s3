@@ -22,7 +22,7 @@ function MongoExports(mongoExports) {
   this.exports = mongoExports;
   for(var i in this.exports) {
     this.exports[i].on("close", this._closeListener.bind(this));
-  };
+  }
   this.streams = __(this.exports.map(function(m) {
     return m.stream;
   })).merge();
@@ -45,7 +45,7 @@ MongoExports.prototype.resume = function() {
   var exportStreams, combinedStreams;
   exportStreams = this.exports.map(function(exports) {
     return exports.resume();
-  })
+  });
   return this;
 };
 
@@ -69,9 +69,9 @@ function MongoExport(config) {
   this.__config  = config;
   this.__id      = uuid.v1();
   this.status    = "uninitialized";
-};
+}
 
-/* 
+/*
  * takes {exportOptions: "", workingDirectory: ""}
 */
 MongoExport.create = function(config, cb) {
@@ -113,7 +113,7 @@ MongoExport.prototype._createWorkingFile = function(cb) {
       return cb(err);
     }
     me.__fd = fd;
-    cb(null, me.workingFile)
+    cb(null, me.workingFile);
   });
 };
 
