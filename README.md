@@ -20,7 +20,8 @@ mongoToS3.createS3Sink({s3: {
 
 
   mongoToS3.fromMongo([{
-    exportOptions: "-h localhost:27017 -d database -c collection", //anything taken by 'mongoexport'
+    //anything accepted by 'mongoexport'
+    exportOptions: "-h localhost:27017 -d database -c collection",
     workingDirectory: "/tmp" //some writable path on your machine
   }])
   .pipe(through(function(chunk, enc, cb) {
