@@ -1,6 +1,7 @@
 ## mongo-to-s3 (WIP)
 
 ```javascript
+var AWS       = require("aws-sdk");
 var MongoToS3 = require("mongo-to-s3");
 var through = require("through");
 
@@ -17,7 +18,10 @@ mongoToS3.createS3Sink({s3: {
   Key: "myKey",
   ACL: "public-read"
 }}, function(err, myS3Sink) {
-
+  /*
+   * myS3Sink is a writable stream that batch uploads
+   * data into s3 using their multipart upload api
+  */
 
   mongoToS3.fromMongo([{
     //anything accepted by 'mongoexport'
@@ -53,7 +57,7 @@ mongoToS3.createS3Sink({s3: {
     this.push(chunk);
     cb();
   }))
-  .pipe(myS3Sink);
+  .pipe(someWritableStream);
 
 
 /*
@@ -71,7 +75,8 @@ mongoToS3.createS3Sink({s3: {
     }
   ])
   .thoughPipeline(__dirname + "/somePipeline.js")
-  .pipe(myS3Sink);
+  .pipe(someWritableStream);
+
 /*
  * `throughPipeline` takes the pathname of a file that exports a Duplex (or Transform) stream.
  * Each mongoexports stream gets its own processing pipe that runs in an external
