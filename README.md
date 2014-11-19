@@ -30,11 +30,13 @@ mongoToS3.createS3Sink({s3: {
     //anything accepted by 'mongoexport'
     exportOptions: "-h localhost:27017 -d database -c collection",
     workingDirectory: "/tmp" //some writable path on your machine
-  }], function(err, exports) {
+  }],
+  function(err, exports) {
     if(err) {
       //handle error
     }
     exports
+      .streams
       .pipe(through(function(chunk, enc, cb) {
         //some processing step
         console.log("Processing:", chunk);
@@ -42,6 +44,8 @@ mongoToS3.createS3Sink({s3: {
         cb();
       }))
       .pipe(myS3Sink);
+  
+    exports.resume();
   });
 });
 
@@ -59,7 +63,8 @@ mongoToS3.createS3Sink({s3: {
       exportOptions: "-h localhost:27017 -d database -c collection2",
       workingDirectory: "/tmp"
     }
-  ], function(err, exports) {
+  ],
+  function(err, exports) {
     if(err) {
       //handle error
     }
@@ -70,6 +75,8 @@ mongoToS3.createS3Sink({s3: {
         cb();
       }))
       .pipe(someWritableStream);
+
+    exports.resume();
   });
 
 /*
