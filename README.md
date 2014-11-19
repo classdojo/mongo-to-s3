@@ -1,4 +1,6 @@
 ## mongo-to-s3 (WIP)
+[![Build Status](https://travis-ci.org/classdojo/mongo-to-s3.svg?branch=master)](https://travis-ci.org/classdojo/mongo-to-s3)
+[![NPM version](https://badge.fury.io/js/mongo-to-s3.png)](http://badge.fury.io/js/mongo-to-s3)
 
 ```javascript
 var AWS       = require("aws-sdk");
