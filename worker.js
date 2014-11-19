@@ -12,23 +12,13 @@ process.on("message", function(pipelineFiles) {
     through = require(pipelineFiles.through);
     to = fs.createWriteStream(pipelineFiles.to, {flags: "a"});
     var err = new Error("File might not exist yet");
-    async.until(function() {
-      return !err;
-    }, function(cb) {
-      fs.stat(pipelineFiles.from, function(e, s) {
-        err = e;
-        // stat = s;
-        cb();
-      });
-    }, function() {
-      from = ChildProcess.spawn("tail", ["-f", pipelineFiles.from]);
-      var fromStream = new Readable().wrap(from.stdout);
-      var parser = JSONStream.parse();
-      fromStream
-        .pipe(parser)
-        .pipe(through)
-        .pipe(to);
-    });
+    from = ChildProcess.spawn("tail", ["-f", pipelineFiles.from]);
+    var fromStream = new Readable().wrap(from.stdout);
+    var parser = JSONStream.parse();
+    fromStream
+      .pipe(parser)
+      .pipe(through)
+      .pipe(to);
     initialized = true;
   }
 });

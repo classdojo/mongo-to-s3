@@ -102,9 +102,7 @@ MongoExport.prototype.init = function(cb) {
     //   e();
     // }
     me.stream = me.__tail.pipe(me.__parser);
-    me._spawnMongoExport();
-    me.pause();
-    cb();
+    me._spawnMongoExport(cb);
   });
 };
 
@@ -120,7 +118,10 @@ MongoExport.prototype._createWorkingFile = function(cb) {
   });
 };
 
-MongoExport.prototype._spawnMongoExport = function() {
+/* Completes once the export has created the output file. The
+   process is then paused.
+*/
+MongoExport.prototype._spawnMongoExport = function(cb) {
   var me = this;
   var options = this.__config.exportOptions + " -o " + this.workingFile;
   this.__spawn = childProcess.spawn("mongoexport", options.split(" "));
@@ -134,7 +135,36 @@ MongoExport.prototype._spawnMongoExport = function() {
     // me.status = "closed";
     exportDebug("Job " + me.__id + " finished");
   });
-  return this.__spawn;
+  this._waitForOutputFileToExist(function(err) {
+    if(err) {
+      return cb(err);
+    }
+    me.pause();
+    cb();
+  });
+};
+
+MongoExport.prototype._waitForOutputFileToExist  = function(maxTries, cb) {
+  exportDebug("Waiting for output file");
+  if(!cb) {
+    cb = maxTries;
+    maxTries = 5;
+  }
+  var fileDoesNotExist = new Error("Output file may not exist");
+  var me = this;
+  var tries = 0;
+  async.until(function() {
+    return !fileDoesNotExist;
+  }, function(cb) {
+    fs.stat(me.workingFile, function(err) {
+      if((err && !_.contains(err.message, "ENOENT")) || tries > maxTries) {
+        return cb(err);
+      }
+      fileDoesNotExist = err;
+      tries++;
+      cb();
+    });
+  }, cb);
 };
 
 MongoExport.prototype.pause = function() {
