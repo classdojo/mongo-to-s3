@@ -30,14 +30,19 @@ mongoToS3.createS3Sink({s3: {
     //anything accepted by 'mongoexport'
     exportOptions: "-h localhost:27017 -d database -c collection",
     workingDirectory: "/tmp" //some writable path on your machine
-  }])
-  .pipe(through(function(chunk, enc, cb) {
-    //some processing step
-    console.log("Processing:", chunk);
-    this.push(chunk);
-    cb();
-  }))
-  .pipe(myS3Sink);
+  }], function(err, exports) {
+    if(err) {
+      //handle error
+    }
+    exports
+      .pipe(through(function(chunk, enc, cb) {
+        //some processing step
+        console.log("Processing:", chunk);
+        this.push(chunk);
+        cb();
+      }))
+      .pipe(myS3Sink);
+  });
 });
 
 
@@ -54,14 +59,18 @@ mongoToS3.createS3Sink({s3: {
       exportOptions: "-h localhost:27017 -d database -c collection2",
       workingDirectory: "/tmp"
     }
-  ])
-  .pipe(through(function(chunk, enc, cb) {
-    //both collection 1 and collection 2 are joined here.
-    this.push(chunk);
-    cb();
-  }))
-  .pipe(someWritableStream);
-
+  ], function(err, exports) {
+    if(err) {
+      //handle error
+    }
+    exports
+      .pipe(through(function(chunk, enc, cb) {
+        //both collection 1 and collection 2 are joined here.
+        this.push(chunk);
+        cb();
+      }))
+      .pipe(someWritableStream);
+  });
 
 /*
  * Sometimes you might want to process mongoexport results in
