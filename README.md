@@ -69,6 +69,7 @@ mongoToS3.createS3Sink({s3: {
       //handle error
     }
     exports
+      .streams
       .pipe(through(function(chunk, enc, cb) {
         //both collection 1 and collection 2 are joined here.
         this.push(chunk);
