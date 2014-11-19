@@ -12,7 +12,6 @@ var Transform    = require("stream").Transform;
 var Tail         = require("./tail");
 var _            = require("lodash");
 var __           = require("highland");
-var Parser       = require("./parser");
 var JSONStream   = require("JSONStream");
 
 

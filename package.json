@@ -1,6 +1,6 @@
 {
   "name": "mongo-to-s3",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Transfer mongo collections to s3",
   "main": "index.js",
   "scripts": {
