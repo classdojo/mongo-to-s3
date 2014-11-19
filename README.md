@@ -32,9 +32,7 @@ mongoToS3.createS3Sink({s3: {
     workingDirectory: "/tmp" //some writable path on your machine
   }],
   function(err, exports) {
-    if(err) {
-      //handle error
-    }
+
     exports
       .streams
       .pipe(through(function(chunk, enc, cb) {
@@ -65,9 +63,7 @@ mongoToS3.createS3Sink({s3: {
     }
   ],
   function(err, exports) {
-    if(err) {
-      //handle error
-    }
+
     exports
       .streams
       .pipe(through(function(chunk, enc, cb) {
