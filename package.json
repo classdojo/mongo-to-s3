@@ -21,10 +21,11 @@
   },
   "devDependencies": {
     "codecov.io": "0.0.8",
+    "expect.js": "0.2.0",
     "istanbul": "0.3.2",
     "jshint": "2.5.10",
     "mocha": "2.0.1",
-    "expect.js": "0.2.0",
+    "mock-fs": "^2.3.2",
     "sinon": "1.12.1"
   }
 }
