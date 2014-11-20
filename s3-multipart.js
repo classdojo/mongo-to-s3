@@ -115,6 +115,7 @@ MultipartWriteS3Upload.prototype.setUploadParams = function(uploadParams) {
 
 MultipartWriteS3Upload.prototype.finishUpload = function(cb) {
   multiDebug("Finishing upload");
+
   chain([
     !_.isEmpty(this.__chunks) && [this._uploadChunks.bind(this), this.__uploadCounter, this.__chunks], //upload last chunk
     [this._completeMultipartUpload.bind(this)]
@@ -175,9 +176,6 @@ MultipartWriteS3Upload.prototype._uploadChunks = function(partNumber, chunks, cb
 
 MultipartWriteS3Upload.prototype._shouldUploadChunks = function(chunk) {
   this.__chunks.push(chunk);
-  if(!chunk.length) {
-    return true;
-  }
 
   this.__queuedUploadSize = this.__queuedUploadSize + _.size(chunk);
   if(this.__queuedUploadSize > this.__chunkUploadSize) {
@@ -186,6 +184,5 @@ MultipartWriteS3Upload.prototype._shouldUploadChunks = function(chunk) {
   }
   return false;
 };
-
 
 module.exports = MultipartWriteS3Upload;
