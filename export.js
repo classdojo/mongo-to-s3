@@ -95,12 +95,7 @@ MongoExport.prototype.init = function(cb) {
     me.__tail = Tail(workingFilePath);
     // TODO: Allow client to define parser
     me.__parser = JSONStream.parse();
-    // var t = new Transform();
-    // t._transform = function(c,d,e) {
-    //   this.push(c);
-    //   e();
-    // }
-    me.stream = me.__tail.pipe(me.__parser);
+    me.stream = me.__tail.stream.pipe(me.__parser);
     me._spawnMongoExport(cb);
   });
 };
@@ -126,12 +121,13 @@ MongoExport.prototype._spawnMongoExport = function(cb) {
   this.__spawn = childProcess.spawn("mongoexport", options.split(" "));
   this.__spawn.on("close", function(exitCode) {
     me.exitCode = exitCode;
-    //let's wait for tail to reach eof before saying this job is closed!
-    me.__tail.once("eof", function() {
+    me.__tail.waitForEof(function(err) {
+      if(err) {
+        me.emit("error", err);
+      }
       me.status = "closed";
       me.emit("close", me);
     });
-    // me.status = "closed";
     exportDebug("Job " + me.__id + " finished");
   });
   this._waitForOutputFileToExist(function(err) {
