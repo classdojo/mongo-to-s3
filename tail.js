@@ -27,7 +27,7 @@ function Tail(file) {
 Tail.prototype.init = function() {
   this.childProcess = ChildProcess.spawn("tail", ["-f", this.__file]);
   this.stream = new Readable().wrap(this.childProcess.stdout);
-}
+};
 
 /* Define EOF as two successful file stats*/
 Tail.prototype.waitForEof = function(cb) {

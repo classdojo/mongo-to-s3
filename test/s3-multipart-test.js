@@ -113,11 +113,6 @@ describe("s3-multipart", function(){
       var payload = mockS3Client.uploadPart.args[1][0];
       expect(payload.Body).to.be("foo" + largeString);
     });
-
-    it("calls completeMultipartUpload", function(){
-      var cb = sinon.stub();
-      expect(mockS3Client.completeMultipartUpload.callCount).to.be(1);
-    });
   });
 
 });
