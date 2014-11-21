@@ -52,13 +52,18 @@ Tail.prototype.waitForEof = function(cb) {
       setTimeout(cb, 5);
     });
   }, function() {
-    //now we need to empty the Readable stream buffer before calling end.
-    console.log("Checking read stream buffer")
+    var lastDataEvent;
+    me.childProcess.stdout.on("data", function(data) {
+      lastDataEvent = new Date();
+    });
+    //let's say we're done once we haven't seen a data event for 5seconds
     var i = setInterval(function() {
-      console.log("Read stream buffer length:", me.stream._readableState.buffer.length);
-      if(me.stream._readableState.buffer.length == 0) {
-        clearInterval(i);
-        cb();
+      if(lastDataEvent) {
+        var timeSinceLastEvent = new Date() - lastDataEvent;
+        if(timeSinceLastEvent > 5000) {
+          console("Detected tail is done");
+          cb();
+        }
       }
     }, 1000);
   });
