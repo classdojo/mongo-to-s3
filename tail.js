@@ -61,7 +61,7 @@ Tail.prototype.waitForEof = function(cb) {
       if(lastDataEvent) {
         var timeSinceLastEvent = new Date() - lastDataEvent;
         if(timeSinceLastEvent > 5000) {
-          console("Detected tail is done");
+          clearInterval(i);
           cb();
         }
       }
