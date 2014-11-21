@@ -51,5 +51,15 @@ Tail.prototype.waitForEof = function(cb) {
       }
       setTimeout(cb, 5);
     });
-  }, cb);
+  }, function() {
+    //now we need to empty the Readable stream buffer before calling end.
+    console.log("Checking read stream buffer")
+    var i = setInterval(function() {
+      console.log("Read stream buffer length:", me.stream._readableState.buffer.length);
+      if(me.stream._readableState.buffer.length == 0) {
+        clearInterval(i);
+        cb();
+      }
+    }, 1000);
+  });
 };
