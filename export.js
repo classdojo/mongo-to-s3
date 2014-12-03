@@ -37,7 +37,7 @@ MongoExports.prototype._closeListener = function(mongoExport) {
       return;
     }
   }
-  this.emit("end");
+  this.streams.end();
 };
 
 MongoExports.prototype.resume = function() {
