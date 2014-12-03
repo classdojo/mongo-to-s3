@@ -52,11 +52,11 @@ Tail.prototype.waitForEof = function(cb) {
       setTimeout(cb, 5);
     });
   }, function() {
-    var lastDataEvent;
+    var lastDataEvent = new Date();
     me.childProcess.stdout.on("data", function(data) {
       lastDataEvent = new Date();
     });
-    //let's say we're done once we haven't seen a data event for 5seconds
+    //let's say we're done once we haven't seen a data event for 5 seconds
     var i = setInterval(function() {
       if(lastDataEvent) {
         var timeSinceLastEvent = new Date() - lastDataEvent;
