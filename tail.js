@@ -17,6 +17,16 @@ module.exports = function(file) {
   var childProcess = ChildProcess.spawn("tail", ["-f", file]);
   var tail = new Tail(file);
   tail.init();
+
+  /* add exit method. 
+
+    NOTE: Will not handle uncaught exceptions. Client should catch
+          exceptions and properly close out the process.
+
+   */
+  process.on("exit", function() {
+    childProcess.kill();
+  });
   return tail;
 };
 

@@ -141,6 +141,7 @@ MultipartWriteS3Upload.prototype._completeMultipartUpload = function(cb) {
 */
 MultipartWriteS3Upload.prototype._uploadChunks = function(partNumber, chunks, cb) {
   var body;
+  var uploadResponse;
   var me = this;
   var uploadId = this.__s3MultipartUploadConfig.UploadId;
   if(_.isString(chunks[0])) {
@@ -164,11 +165,12 @@ MultipartWriteS3Upload.prototype._uploadChunks = function(partNumber, chunks, cb
       multiDebug("Error uploading chunks " + err);
       return cb(err);
     }
-    me.__uploadedParts.push({
+    uploadResponse = {
       ETag: uploadResponse.ETag,
       PartNumber: partNumber
-    });
-    multiDebug("Uploaded chunk " + partNumber);
+    };
+    me.__uploadedParts.push(uploadResponse);
+    multiDebug("Uploaded chunk " + JSON.stringify(uploadResponse));
     cb(null, uploadResponse);
   });
 };
