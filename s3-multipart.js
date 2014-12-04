@@ -74,6 +74,7 @@ MultipartWriteS3Upload.create = function(s3Client, chunkUploadSize, multipartCre
     if(err) {
       return cb(err);
     }
+    multiDebug("Created new multipart upload: " + JSON.stringify(s3MultipartUploadConfig));
     myS3Upload.__s3MultipartUploadConfig = s3MultipartUploadConfig;
     MultipartWriteS3Upload._addFinishHandler(myS3Upload);
     cb(null, myS3Upload);
