@@ -124,6 +124,7 @@ describe("s3-multipart", function(){
     var largeString;
     var smallString = "small";
     var s3;
+    var writeFileStub;
     var s3MultipartUploadConfig = {
       UploadId: 1,
       Bucket: "myBucket",
@@ -138,6 +139,13 @@ describe("s3-multipart", function(){
       }
       largeString = str;
     })();
+
+    before(function() {
+      fs = require("fs");
+      writeFileStub = sinon.stub(fs, "writeFile");
+      writeFileStub.yieldsAsync(null);
+    });
+
 
 
     beforeEach(function() {
@@ -450,6 +458,33 @@ describe("s3-multipart", function(){
             copiedJobs = jobs.map(_.identity);
             uploader.__outstandingUploads = jobs;
           });
+
+          it("adds failed jobs to the failed journal array", function() {
+            uploader._cleanupAndLogFinishedJobs();
+            expect(uploader.__journal.segments.failed).to.have.length(1);
+            expect(uploader.__journal.segments.failed[0]).to.not.be.empty();
+          });
+
+          it("adds successful jobs to the success journal array", function() {
+            uploader._cleanupAndLogFinishedJobs();
+            expect(uploader.__journal.segments.success).to.have.length(2);
+            expect(uploader.__journal.segments.success[0]).to.not.be.empty();
+            expect(uploader.__journal.segments.success[1]).to.not.be.empty();
+          });
+
+          it("compacts failed and successful jobs", function() {
+            uploader._cleanupAndLogFinishedJobs();
+            expect(uploader.__outstandingUploads).to.be.empty();
+          });
+
+          it("does not compact jobs that are not failed or successful", function() {
+            jobs.forEach(function(job) {
+              job.status = "waiting";
+            });
+            uploader._cleanupAndLogFinishedJobs();
+            expect(uploader.__outstandingUploads).to.have.length(3);
+          });
+
           describe("serialization", function() {
             beforeEach(function() {
               jobs.forEach(function(job) {
@@ -477,35 +512,74 @@ describe("s3-multipart", function(){
             });
           });
 
-          it("adds failed jobs to the failed journal array", function() {
-            uploader._cleanupAndLogFinishedJobs();
-            expect(uploader.__journal.segments.failed).to.have.length(1);
-            expect(uploader.__journal.segments.failed[0]).to.not.be.empty();
-          });
+          describe("integration journal write", function() {
 
-          it("adds successful jobs to the success journal array", function() {
-            uploader._cleanupAndLogFinishedJobs();
-            expect(uploader.__journal.segments.success).to.have.length(2);
-            expect(uploader.__journal.segments.success[0]).to.not.be.empty();
-            expect(uploader.__journal.segments.success[1]).to.not.be.empty();
-          });
-
-          it("compacts failed and successful jobs", function() {
-            uploader._cleanupAndLogFinishedJobs();
-            expect(uploader.__outstandingUploads).to.be.empty();
-          });
-
-          it("does not compact jobs that are not failed or successful", function() {
-            jobs.forEach(function(job) {
-              job.status = "waiting";
+            beforeEach(function() {
+              writeFileStub.reset();
             });
-            uploader._cleanupAndLogFinishedJobs();
-            expect(uploader.__outstandingUploads).to.have.length(3);
+
+            it("attempts to write the proper journal file", function() {
+              var expectedJournal = {
+                uploadConfig: s3MultipartUploadConfig,
+                segments: {
+                  success: [
+                    {
+                      partNumber: 2,
+                      ETag: "ETag1"
+                    },
+                    {
+                      partNumber: 3,
+                      ETag: "ETag2"
+                    }
+                  ],
+                  failed: [{
+                    partNumber: 1,
+                    error: "error",
+                    data: [115, 116, 114, 105, 110, 103]
+                  }]
+                }
+              };
+              uploader._cleanupAndLogFinishedJobs();
+              expect(writeFileStub.callCount).to.be(1);
+              expect(writeFileStub.firstCall.args[1]).to.be(JSON.stringify(expectedJournal));
+            });
           });
         });
 
         describe("#commitJournal", function() {
+          beforeEach(function() {
+            writeFileStub.reset();
+          });
 
+          it("only allows one outstanding write at a time", function() {
+            //simulate two quick successive calls
+            uploader.commitJournal();
+            uploader.commitJournal();
+            expect(writeFileStub.callCount).to.be(1);
+          });
+
+          it("passes the proper arguments to fs.writeFile", function() {
+            var exampleJournal = {
+              uploadConfig: {},
+              segments: {
+                success: [],
+                failed: []
+              }
+            };
+            uploader.__journal = exampleJournal;
+            uploader.commitJournal();
+            expect(writeFileStub.firstCall.args[0]).to.be(uploader.__journalFile);
+            expect(writeFileStub.firstCall.args[1]).to.eql(JSON.stringify(exampleJournal));
+          });
+
+          it("emits 'journalError' when there's a problem writing the file", function(done) {
+            writeFileStub.yieldsAsync(new Error("error"));
+            uploader.on("journalError", function(err) {
+              expect(err).to.be.an(Error);
+              done();
+            });
+            uploader.commitJournal();
+          });
         });
 
         describe("#start", function() {
@@ -515,6 +589,7 @@ describe("s3-multipart", function(){
         describe("#stop", function() {
 
         });
+
       });
 
       describe("UploadJob", function() {
