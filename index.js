@@ -69,7 +69,7 @@ MongoToS3Upload.prototype.createS3Sink = function(options, cb) {
     multipartCreationParams: options.s3,
     workingDirectory: options.workingDirectory
   };
-  S3Multipart.create(this.__s3Client, opts, cb);
+  S3MultipartNew.create(this.__s3Client, opts, cb);
 };
 
 MongoToS3Upload.prototype.fromMongo = function(options, cb) {
