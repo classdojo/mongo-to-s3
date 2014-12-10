@@ -40,7 +40,9 @@ function MultipartWriteS3Upload(s3Client, options) {
   this.__uploadsInProgress = 0;
   this.waitingUploads = [];
   this.__uploader = new Uploader(this);
-  this.__chunkUploadSize = _.isNaN(options.chunkUploadSize) || options.chunkUploadSize < MINIMUM_CHUNK_UPLOAD_SIZE ?
+  this.__chunkUploadSize = _.isEmpty(options.chunkUploadSize) || 
+                           _.isNaN(options.chunkUploadSize) ||
+                           options.chunkUploadSize < MINIMUM_CHUNK_UPLOAD_SIZE ?
                                 MINIMUM_CHUNK_UPLOAD_SIZE : options.chunkUploadSize;
 
 }
