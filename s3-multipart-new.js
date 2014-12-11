@@ -15,7 +15,7 @@ var uploadDebug    = require("debug")("upload");
 var multiDebug     = require("debug")("multi");
 
 var MINIMUM_CHUNK_UPLOAD_SIZE = 5242880;
-var PARALLEL_UPLOADS = 5;
+var PARALLEL_UPLOADS = 10;
 
 // function MultipartWriteS3(s3Client) {
 //   this.__s3Client = s3Client;
@@ -39,7 +39,7 @@ function MultipartWriteS3Upload(s3Client, options) {
   this.__queuedUploadSize = 0;
   this.__uploadsInProgress = 0;
   this.waitingUploads = [];
-  this.__uploader = new Uploader(this);
+  this.__uploader = new Uploader(this, options.workingDirectory);
   this.__chunkUploadSize = _.isEmpty(options.chunkUploadSize) || 
                            _.isNaN(options.chunkUploadSize) ||
                            options.chunkUploadSize < MINIMUM_CHUNK_UPLOAD_SIZE ?
@@ -79,20 +79,21 @@ function MultipartWriteS3Upload(s3Client, options) {
  *               WebsiteRedirectLocation: 'STRING_VALUE'
  *             };
  *          options.workingDirectory
+ *          options.parallelUploads
  *
  *
  *
 */
 MultipartWriteS3Upload.create = function(s3Client, options, cb) {
-  var chunkUploadSize = options.chunkUploadSize || MINIMUM_CHUNK_UPLOAD_SIZE;
-  var myS3Upload = new this(s3Client, chunkUploadSize);
+  options.chunkUploadSize = options.chunkUploadSize || MINIMUM_CHUNK_UPLOAD_SIZE;
+  var myS3Upload = new this(s3Client, options);
   /* */
   s3Client.createMultipartUpload(options.multipartCreationParams, function(err, s3MultipartUploadConfig) {
     if(err) {
       return cb(err);
     }
     myS3Upload.s3MultipartUploadConfig = s3MultipartUploadConfig;
-    MultipartWriteS3Upload._addFinishHandler(myS3Upload, options.workingDirectory);
+    MultipartWriteS3Upload._addFinishHandler(myS3Upload);
     myS3Upload.__uploader.start();
     cb(null, myS3Upload);
   });
@@ -101,6 +102,7 @@ MultipartWriteS3Upload.create = function(s3Client, options, cb) {
 MultipartWriteS3Upload._addFinishHandler = function(multipartWriteS3Upload) {
   /* adds finish logic */
   multipartWriteS3Upload.on("finish", function() {
+    console.log("FINISH CALLED");
     multipartWriteS3Upload.finishUpload(function(err) {
       if(err) {
         return multipartWriteS3Upload.emit("error", err);
@@ -161,16 +163,21 @@ MultipartWriteS3Upload.prototype.finishUpload = function(cb) {
 
 MultipartWriteS3Upload.prototype._completeMultipartUpload = function(cb) {
   var me = this;
-  var completeConfig = {
-    UploadId         : this.s3MultipartUploadConfig.UploadId,
-    Bucket           : this.s3MultipartUploadConfig.Bucket,
-    Key              : this.s3MultipartUploadConfig.Key,
-    MultipartUpload  : {
-      Parts: this.__uploadedParts
-    }
-  };
+  var sortedParts;
+  var completeConfig;
   multiDebug("Waiting for uploader to finish");
   this.__uploader.once("empty", function() {
+    sortedParts = _.sortBy(me.__uploadedParts, function(upload) {
+      return upload.PartNumber;
+    });
+    completeConfig = {
+      UploadId         : me.s3MultipartUploadConfig.UploadId,
+      Bucket           : me.s3MultipartUploadConfig.Bucket,
+      Key              : me.s3MultipartUploadConfig.Key,
+      MultipartUpload  : {
+        Parts: sortedParts
+      }
+    };
     multiDebug("Completing upload transfer");
     me.__uploader.stop();
     me.__s3Client.completeMultipartUpload(completeConfig, cb);

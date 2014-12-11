@@ -273,12 +273,16 @@ describe("s3-multipart", function(){
       });
 
       describe("#_completeMultipartUpload", function() {
-        var uploadedPart = {
+        var uploadedPart1 = {
           ETag: "TAG",
           PartNumber: 1
         };
+        var uploadedPart2 = {
+          ETag: "TAG",
+          PartNumber: 2
+        };
         beforeEach(function() {
-          s3.__uploadedParts = [uploadedPart];
+          s3.__uploadedParts = [uploadedPart2, uploadedPart1];
           s3.__s3Client.completeMultipartUpload.yields(null);
         });
         it("constructs a proper config to pass onto s3", function() {
@@ -287,7 +291,7 @@ describe("s3-multipart", function(){
             Bucket    : s3MultipartUploadConfig.Bucket,
             Key       : s3MultipartUploadConfig.Key,
             MultipartUpload : {
-              Parts: [uploadedPart]
+              Parts: [uploadedPart1, uploadedPart2]
             }
           };
           s3._completeMultipartUpload(function(err) {

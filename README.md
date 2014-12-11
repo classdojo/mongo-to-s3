@@ -16,11 +16,15 @@ var s3 = new AWS.S3({
 
 mongoToS3 = new MongoToS3(s3);
 
-mongoToS3.createS3Sink({s3: {
-  Bucket: "myBucket",
-  Key: "myKey",
-  ACL: "public-read"
-}}, function(err, myS3Sink) {
+mongoToS3.createS3Sink({
+  s3: {
+    Bucket: "myBucket",
+    Key: "myKey",
+    ACL: "public-read"
+  },
+  chunkUploadSize: 5242880, //5MB
+  workingDirectory: "/tmp"
+}, function(err, myS3Sink) {
   /*
    * myS3Sink is a writable stream that batch uploads
    * data into s3 using their multipart upload api
