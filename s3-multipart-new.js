@@ -239,7 +239,7 @@ function Uploader(s3Multipart, workingDirectory) {
 }
 
 Uploader.prototype.start = function() {
-  uploaderDebug("Starting. Working file: " + this.__journalFile);
+  console.log("Uploader starting. Working file: " + this.__journalFile);
   this.__i = setInterval(this.serviceUploads.bind(this), 1000);
 };
 
