@@ -83,8 +83,6 @@ describe("fs-tail", function() {
           });
         });
       });
-
     });
   });
-
 });

@@ -4,7 +4,7 @@ var inherits    = require("util").inherits;
 var once        = require("once");
 
 var EOF_AFTER = 500;
-
+var START     = 0;
 /* 
  *  @param fileName {String}
  *  @param options
@@ -17,7 +17,7 @@ function FsTail(fileName, options) {
   PassThrough.call(this);
   options = options || {};
   this.__fileName    = fileName;
-  this.__start       = options.start || 0;
+  this.__start       = options.start || START;
   this.__EOFAfter    = options.EOFAfter || EOF_AFTER;
 }
 
@@ -111,5 +111,3 @@ module.exports = function(fileName, options) {
 
 //export FsTail for testing.
 module.exports.__FsTail = FsTail;
-
-
