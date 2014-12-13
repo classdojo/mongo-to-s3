@@ -3,7 +3,7 @@ var Readable     = require("stream").Readable;
 var inherits     = require("util").inherits;
 var fs           = require("fs");
 var async        = require("async");
-var FsTail       = require("./fs-tail");
+var FsTail       = require("fs-tail");
 
 module.exports = function(file) {
   var tail = new Tail(file);
