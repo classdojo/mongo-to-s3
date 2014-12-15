@@ -1,6 +1,6 @@
 {
   "name": "mongo-to-s3",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "description": "Transfer mongo collections to s3",
   "main": "index.js",
   "scripts": {
@@ -23,7 +23,7 @@
     "rewire": "2.1.3",
     "sinon": "1.12.1",
     "slide": "1.1.6",
-    "fs-tail": "0.0.0"
+    "fs-tail": "0.0.3"
   },
   "devDependencies": {
     "codecov.io": "0.0.8",

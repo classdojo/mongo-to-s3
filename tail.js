@@ -19,7 +19,6 @@ Tail.prototype.init = function() {
   this.stream = FsTail(this.__file);
 };
 
-/* Define EOF as two successful file stats*/
 Tail.prototype.waitForEof = function(cb) {
   this.stream.once("EOF", cb);
 };

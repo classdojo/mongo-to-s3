@@ -85,7 +85,6 @@ MongoExport.create = function(config, cb) {
   });
 };
 
-
 MongoExport.prototype.init = function(cb) {
   var me = this;
   this._createWorkingFile(function(err, workingFilePath) {
