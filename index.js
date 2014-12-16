@@ -1,19 +1,18 @@
-var S3              = require("aws-sdk").S3;
-var Readable        = require("stream").Readable;
-var childProcess    = require("child_process");
-var Writable        = require("stream").Writable;
-var _               = require("lodash");
-var fs              = require("fs");
-var inherits        = require("util").inherits;
-var S3Multipart     = require("./s3-multipart");
-var S3MultipartNew  = require("./s3-multipart-new");
-var MongoExports    = require("./export").MongoExports;
-var async           = require("async");
-var __              = require("highland");
-var uuid            = require("node-uuid");
-var Tail            = require("./tail");
-var EventEmitter    = require("events").EventEmitter;
-var JSONParse       = require("./jsonparser");
+var S3                 = require("aws-sdk").S3;
+var Readable           = require("stream").Readable;
+var childProcess       = require("child_process");
+var Writable           = require("stream").Writable;
+var _                  = require("lodash");
+var fs                 = require("fs");
+var inherits           = require("util").inherits;
+var S3MultipartStream  = require("s3-multipart-stream");
+var MongoExports       = require("./export").MongoExports;
+var async              = require("async");
+var __                 = require("highland");
+var uuid               = require("node-uuid");
+var Tail               = require("./tail");
+var EventEmitter       = require("events").EventEmitter;
+var JSONParse          = require("./jsonparser");
 
 //debuggers
 var mongoDebug    = require("debug")("mongo");
@@ -69,7 +68,7 @@ MongoToS3Upload.prototype.createS3Sink = function(options, cb) {
     multipartCreationParams: options.s3,
     workingDirectory: options.workingDirectory
   };
-  S3MultipartNew.create(this.__s3Client, opts, cb);
+  S3MultipartStream.create(this.__s3Client, opts, cb);
 };
 
 MongoToS3Upload.prototype.fromMongo = function(options, cb) {
