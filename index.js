@@ -13,7 +13,7 @@ var __              = require("highland");
 var uuid            = require("node-uuid");
 var Tail            = require("./tail");
 var EventEmitter    = require("events").EventEmitter;
-var JSONStream      = require("JSONStream");
+var JSONParse       = require("./jsonparser");
 
 //debuggers
 var mongoDebug    = require("debug")("mongo");
@@ -97,7 +97,7 @@ MongoToS3Upload.prototype.fromMongo = function(options, cb) {
 MongoToS3Upload.prototype.throughPipeline  = function(filePath) {
   //let's fork a worker processor for every copy of mongoExport
   this.__pipelineFilePath = filePath;
-  return this.__joinTail.stream.pipe(JSONStream.parse());
+  return this.__joinTail.stream.pipe(JSONParse());
 };
 
 MongoToS3Upload.prototype._createWorkerProcesses = function() {
